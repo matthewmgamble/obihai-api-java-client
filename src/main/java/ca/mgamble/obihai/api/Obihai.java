@@ -15,6 +15,8 @@ import org.apache.log4j.Logger;
 import org.asynchttpclient.*;
 import java.util.concurrent.Future;
 import java.util.logging.Level;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 /**
  *
@@ -39,7 +41,7 @@ public class Obihai implements Closeable {
     public Obihai(String url, String username, String password) throws Exception {
         this.logger = Logger.getLogger(Obihai.class);
         Gson gson = new Gson();
-        this.url = url + "sessions";
+        this.url = url ;
 
         // this.closeClient = client == null;
         //   this.token = null;
@@ -48,7 +50,7 @@ public class Obihai implements Closeable {
         SessionRequest sessionRequest = new SessionRequest(username, password);
         System.out.println(gson.toJson(sessionRequest));
         RequestBuilder builder = new RequestBuilder("POST");
-        Request request = builder.setUrl(this.url)
+        Request request = builder.setUrl(this.url + "sessions")
                 .addHeader("Accept", JSON)
                 .addHeader("Content-Type", JSON)
                 .setBody(gson.toJson(sessionRequest))
@@ -90,5 +92,28 @@ public class Obihai implements Closeable {
             }
         }
         closed = true;
+    }
+    
+    /* Device functions */
+    public String getDeviceID(String macAddress) throws Exception {
+        RequestBuilder builder = new RequestBuilder("GET");
+        Request request = builder.setUrl(this.url + "devices?macAddress=" + macAddress.toUpperCase())
+                .addHeader("Accept", JSON)
+                .addHeader("Content-Type", JSON)
+                .addHeader("Authorization", "Bearer " + this.token)
+                
+                .build();
+        Future<Response> f = client.executeRequest(request);
+        Response r = f.get();
+        if (r.getStatusCode() != 200) {
+            System.out.println(this.url + "devices?macAddress=" + macAddress.toUpperCase());
+            System.out.println("Got response " + r.getStatusCode());
+            throw new Exception("Could not get device ID");
+        }  else {
+                final JSONObject obj = new JSONObject(r.getResponseBody());
+                final JSONArray dataobject = obj.getJSONArray("data");
+                final JSONObject data = dataobject.getJSONObject(0);
+                return data.getString("id");
+        }
     }
 }
